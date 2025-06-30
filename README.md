@@ -22,7 +22,7 @@ This code analyzes the mixing time in solid suspension experiments by processing
 5. **Mixing Time Detection:**  
    - The code detects when the STD curve flattens (indicating mixing completion).
    - It also finds when the PCT curve crosses a user-defined threshold (default: 0.95).
-![experiment1_derivative_PCT](https://github.com/user-attachments/assets/99953855-bad0-4b06-b4fb-45a17f66b960) ![experiment1_derivative](https://github.com/user-attachments/assets/e75e9dcc-3903-49f3-8d4d-f44517ba067b) 
+ ![experiment1_derivative](https://github.com/user-attachments/assets/e75e9dcc-3903-49f3-8d4d-f44517ba067b) ![experiment1_derivative_PCT](https://github.com/user-attachments/assets/99953855-bad0-4b06-b4fb-45a17f66b960)
 
 6. **Results & Visualization:**  
    - Mixing time results and plots are saved for each video and summarized across all videos.
