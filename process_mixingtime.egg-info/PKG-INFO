@@ -1,0 +1,10 @@
+Metadata-Version: 2.1
+Name: process_mixingtime
+Version: 0.0.1
+Summary: Tools to process images for mixing time analysis.
+Home-page: 
+Author: Weheliye Hashi
+Author-email: Weheliye.Weheliye@oribiotech.com
+License: MIT
+
+Tools to process images for mixing time. Using the GUI, you can select images and process them to analyze the mixing time when a dye is inserted into the fluid.

@@ -1,0 +1,3 @@
+[console_scripts]
+mt_gui = process_mixingtime.mixingtime_gui:main
+mt_main_processing = process_mixingtime.Process_main_images_GUI:main

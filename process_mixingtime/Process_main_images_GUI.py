@@ -1,5 +1,7 @@
 # %%
-%matplotlib qt 
+#import matplotlib
+
+#matplotlib.use('QtAgg')  # or 'QtAgg' in newer versions
 import numpy as np
 from scipy.ndimage import gaussian_filter
 import matplotlib.pyplot as plt
@@ -86,7 +88,7 @@ def analyze_mixing_time(
     injs=10,
     GG=30,
     FF=900,
-    skip=100,
+
     Filter=2,
     consecutivePoints=5,
     fromend=1,
@@ -114,7 +116,7 @@ def analyze_mixing_time(
     except Exception as e:
         print(f"Error loading mask from {mask_path}: {e}")
     if use_existing_mask:
-         print(f"Using cached mask for {video_path.name}")
+         print(f"Using cached mask for {Path(video_path).name}")
     else:
         fig, ax = plt.subplots()
         ax.imshow(frame, cmap='gray')
@@ -136,10 +138,10 @@ def analyze_mixing_time(
     M1 = average_frames(store, indicesf, channel, mask, Filter)
 
     totalpx = np.sum(~np.isnan(M0))
-   # AA = round(totalframes / totalframes2analyze)
-    #times = [(i * AA) / fps for i in range(int(totalframes / AA) - 1)]
-    times = [(i*skip) / fps for i in range(totalframes2analyze)]
-    store = selectVideoReader(video_path)
+    AA = round(totalframes / totalframes2analyze)
+    times = [(i * AA) / fps for i in range(int(totalframes / AA) - 1)]
+    #times = [(i*skip) / fps for i in range(totalframes2analyze)]
+    #store = selectVideoReader(video_path)
     zGmean, zSTDM = [], []
 
     for t in tqdm(times, desc="Processing frames", total=len(times)):
@@ -202,7 +204,7 @@ def _plot_results(results_path, records, newthresh=0.95):
     tmc_mean, tmc_std  = np.nanmean(tm_list), np.nanstd(tm_list)
     plt.legend(loc='upper right', fontsize=14, title=f'Mean $t_m$ = {tmc_mean:.1f}s,\n STD = {tmc_std:.1f}s')
     plt.tight_layout()
-    result_file_std = results_path / "all_videos_mixing_time_analysis.png"
+    result_file_std = results_path / "all_videos_std_mixing_time.png"
     plt.savefig(result_file_std)
    # print(f"All STD results saved to {result_file_std}")
 
@@ -257,7 +259,7 @@ def main_processor(rawvideos_path, Use_same_mask=True, totalframes2analyze=271, 
 
     """
 
-
+    rawvideos_path = Path(rawvideos_path).resolve()
     results_path_global = Path(str(rawvideos_path).replace('RawVideos', 'Results').replace('\\', '/'))
 
     if not rawvideos_path.exists():
@@ -310,7 +312,7 @@ def main_processor(rawvideos_path, Use_same_mask=True, totalframes2analyze=271, 
                                                 injs,
                                                 GG,
                                                 FF,
-                                                skip,
+                                         
                                                 )
                 smoothSTD, smooth_zGmean, tm, tmpct, time = results
                 local_records.append({
@@ -354,7 +356,7 @@ def main():
     parser.add_argument('--injs', type=int, default=10, help='Seconds between injection and agitation.') 
     parser.add_argument('--GG', type=int, default=30, help='Number of frames to average at the beginning.')
     parser.add_argument('--FF', type=int, default=900, help='Number of frames to average at the end.')
-    parser.add_argument('--skip', type=int, default=100, help='Number of frames to skip between each analyzed frame.')       
+       
     args = parser.parse_args()
     
     main_processor(args.rawvideos_path,args.Use_same_mask, args.totalframes2analyze, args.channel,

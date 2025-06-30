@@ -1,4 +1,6 @@
 # %%
+import matplotlib
+matplotlib.use('TkAgg')  # Use TkAgg for compatibility with Tkinter
 from tkinter import (
     Tk,
     Frame,
@@ -25,7 +27,7 @@ class VideoProcessingApp:
         self.frame.pack(padx=30, pady=30, fill="both", expand=True)
 
         self.raw_videos_path = StringVar()
-        self.use_same_mask = IntVar(value=0)
+        self.use_same_mask = IntVar(value=1)
         self.total_frames = StringVar(value="271")
         self.channel = StringVar(value="1")
         self.span = StringVar(value="150")
@@ -35,7 +37,7 @@ class VideoProcessingApp:
         self.injs = StringVar(value="10")
         self.gg = StringVar(value="30")
         self.ff = StringVar(value="900")
-        self.skip = StringVar(value="100")
+        # self.skip = StringVar(value="100")  # Removed skip variable
 
         Label(self.frame, text="Select Raw Videos Folder:").grid(
             row=0, column=0, sticky="w", pady=12, padx=8
@@ -47,7 +49,7 @@ class VideoProcessingApp:
             row=0, column=2, padx=(8, 0), pady=12
         )
 
-        Label(self.frame, text="Use Same Mask:").grid(
+        Label(self.frame, text="Use Same Mask for each day:").grid(
             row=1, column=0, sticky="w", pady=12, padx=8
         )
         Checkbutton(self.frame, variable=self.use_same_mask).grid(
@@ -60,12 +62,13 @@ class VideoProcessingApp:
         Entry(self.frame, textvariable=self.total_frames).grid(
             row=2, column=1, pady=12, padx=8
         )
-        Label(self.frame, text="Skip:").grid(
-            row=2, column=2, sticky="w", pady=12, padx=8
-        )
-        Entry(self.frame, textvariable=self.skip, width=10).grid(
-            row=2, column=3, pady=12, padx=8
-        )
+        # Removed Skip label and entry
+        # Label(self.frame, text="Skip:").grid(
+        #     row=2, column=2, sticky="w", pady=12, padx=8
+        # )
+        # Entry(self.frame, textvariable=self.skip, width=10).grid(
+        #     row=2, column=3, pady=12, padx=8
+        # )
 
         # Add StringVars for GG and FF time display
         self.gg_time_text = StringVar(value="Equivalent to 1.0s")
@@ -136,21 +139,20 @@ class VideoProcessingApp:
             row=10, column=1, pady=12, padx=8
         )
 
-        # Add a StringVar to hold the duration text
-        self.duration_text = StringVar(value="Duration analysis: 15m 3s")
+        # Remove duration_text and its Entry (since it was based on skip)
+        # self.duration_text = StringVar(value="Duration analysis: 15m 3s")
+        # Entry(
+        #     self.frame,
+        #     textvariable=self.duration_text,
+        #     state="readonly",
+        #     width=28,
+        #     fg="blue",
+        # ).grid(row=2, column=4, padx=8, pady=12)
 
-        # After the Skip entry, add a non-editable Entry for duration
-        Entry(
-            self.frame,
-            textvariable=self.duration_text,
-            state="readonly",
-            width=28,
-            fg="blue",
-        ).grid(row=2, column=4, padx=8, pady=12)
-
-        # Trace changes to update duration automatically
-        self.total_frames.trace_add("write", lambda *args: self.update_duration())
-        self.skip.trace_add("write", lambda *args: self.update_duration())
+        # Remove traces for skip and duration
+        self.total_frames.trace_add("write", lambda *args: self.update_gg_time())
+        self.total_frames.trace_add("write", lambda *args: self.update_ff_time())
+        # self.skip.trace_add("write", lambda *args: self.update_duration())
 
         # Trace changes to update GG and FF time automatically
         self.gg.trace_add("write", lambda *args: self.update_gg_time())
@@ -164,9 +166,9 @@ class VideoProcessingApp:
         folder_selected = filedialog.askdirectory()
         if folder_selected:
             self.raw_videos_path.set(folder_selected)
+           
 
     def run_processing(self):
-       
         try:
             pm.main_processor(
                 self.raw_videos_path.get(),
@@ -180,23 +182,13 @@ class VideoProcessingApp:
                 int(self.injs.get()),
                 int(self.gg.get()),
                 int(self.ff.get()),
-                int(self.skip.get()),
-
+                # int(self.skip.get()),  # Removed skip argument
             )
             messagebox.showinfo("Success", "Video processing completed successfully.")
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
 
-    def update_duration(self):
-        try:
-            total_frames = int(self.total_frames.get())
-            skip = int(self.skip.get())
-            total = (total_frames * skip) / 30
-            minutes = int(total // 60)
-            seconds = total % 60
-            self.duration_text.set(f"Duration analysis: {minutes}m {int(seconds)}s")
-        except Exception:
-            self.duration_text.set("Duration analysis: -")
+    # Removed update_duration method
 
     def update_gg_time(self):
         try:
@@ -225,9 +217,12 @@ class VideoProcessingApp:
             self.ff_time_text.set("Equivalent to -")
 
 
-if __name__ == "__main__":
+def main():
     root = Tk()
     app = VideoProcessingApp(root)
     root.mainloop()
+
+if __name__ == "__main__":
+    main()
 
 # %%
