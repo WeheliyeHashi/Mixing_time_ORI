@@ -1,0 +1,12 @@
+name: Mixingtime_code_ORI
+channels:
+  - anaconda
+dependencies:
+  - python=3.8
+  - jupyter
+  - matplotlib= 3.7
+  - pandas=1.5.3
+  - pip 
+  - pip:
+      - openpyxl
+      - tqdm
