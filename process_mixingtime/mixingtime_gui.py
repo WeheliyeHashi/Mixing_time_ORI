@@ -13,6 +13,7 @@ from tkinter import (
     OptionMenu,
     filedialog,
     messagebox,
+    Radiobutton,
 )
 
 import process_mixingtime as pm
@@ -39,7 +40,7 @@ class VideoProcessingApp:
         self.ff = StringVar(value="900")
         # self.skip = StringVar(value="100")  # Removed skip variable
 
-        Label(self.frame, text="Select Raw Videos Folder:").grid(
+        Label(self.frame, text="Select Raw Videos Folder:", font=("Arial", 10, "bold")).grid(
             row=0, column=0, sticky="w", pady=12, padx=8
         )
         Entry(self.frame, textvariable=self.raw_videos_path, width=40).grid(
@@ -49,18 +50,30 @@ class VideoProcessingApp:
             row=0, column=2, padx=(8, 0), pady=12
         )
 
-        Label(self.frame, text="Use Same Mask for each day:").grid(
+        # Mixing option radio buttons (moved here)
+        self.mixing_option = StringVar(value="rock")
+        Label(self.frame, text="Mixing option:", font=("Arial", 10, "bold")).grid(
             row=1, column=0, sticky="w", pady=12, padx=8
         )
+        Radiobutton(self.frame, text="Rock",font=("Arial", 8, "bold"), variable=self.mixing_option, value="rock").grid(
+            row=1, column=1, sticky="w", pady=12, padx=2
+        )
+        Radiobutton(self.frame, text="Compression",  font=("Arial", 8, "bold"), variable=self.mixing_option, value="compression").grid(
+            row=1, column=2, sticky="w", pady=12, padx=2
+        )
+
+        Label(self.frame, text="Use Same Mask for each day:", font=("Arial", 10, "bold")).grid(
+            row=2, column=0, sticky="w", pady=12, padx=8
+        )
         Checkbutton(self.frame, variable=self.use_same_mask).grid(
-            row=1, column=1, sticky="w", pady=12, padx=8
+            row=2, column=1, sticky="w", pady=12, padx=8
         )
 
         Label(self.frame, text="Total Frames to Analyze:").grid(
-            row=2, column=0, sticky="w", pady=12, padx=8
+            row=3, column=0, sticky="w", pady=12, padx=8
         )
         Entry(self.frame, textvariable=self.total_frames).grid(
-            row=2, column=1, pady=12, padx=8
+            row=3, column=1, pady=12, padx=8
         )
         # Removed Skip label and entry
         # Label(self.frame, text="Skip:").grid(
@@ -76,91 +89,85 @@ class VideoProcessingApp:
 
         # GG and FF underneath Total Frames/Skip
         Label(self.frame, text="Frames to Avg (Start):").grid(
-            row=3, column=0, sticky="w", pady=12, padx=8
+            row=4, column=0, sticky="w", pady=12, padx=8
         )
-        Entry(self.frame, textvariable=self.gg).grid(row=3, column=1, pady=12, padx=8)
+        Entry(self.frame, textvariable=self.gg).grid(row=4, column=1, pady=12, padx=8)
         Entry(
             self.frame,
             textvariable=self.gg_time_text,
             state="readonly",
             width=22,
             fg="blue",
-        ).grid(row=3, column=2, padx=8, pady=12)
+        ).grid(row=4, column=2, padx=8, pady=12)
 
         Label(self.frame, text="Frames to Avg (End):").grid(
-            row=4, column=0, sticky="w", pady=12, padx=8
+            row=5, column=0, sticky="w", pady=12, padx=8
         )
-        Entry(self.frame, textvariable=self.ff).grid(row=4, column=1, pady=12, padx=8)
+        Entry(self.frame, textvariable=self.ff).grid(row=5, column=1, pady=12, padx=8)
         Entry(
             self.frame,
             textvariable=self.ff_time_text,
             state="readonly",
             width=22,
             fg="blue",
-        ).grid(row=4, column=2, padx=8, pady=12)
+        ).grid(row=5, column=2, padx=8, pady=12)
 
         Label(self.frame, text="Select Channel (0: R, 1: G, 2: B):").grid(
-            row=5, column=0, sticky="w", pady=12, padx=8
+            row=6, column=0, sticky="w", pady=12, padx=8
         )
         OptionMenu(self.frame, self.channel, "0", "1", "2").grid(
-            row=5, column=1, pady=12, padx=8
+            row=6, column=1, pady=12, padx=8
         )
 
         Label(self.frame, text="Smoothing Span:").grid(
-            row=6, column=0, sticky="w", pady=12, padx=8
-        )
-        Entry(self.frame, textvariable=self.span).grid(row=6, column=1, pady=12, padx=8)
-
-        Label(self.frame, text="Derivative Span:").grid(
             row=7, column=0, sticky="w", pady=12, padx=8
         )
-        Entry(self.frame, textvariable=self.spanderivative).grid(
-            row=7, column=1, pady=12, padx=8
-        )
+        Entry(self.frame, textvariable=self.span).grid(row=7, column=1, pady=12, padx=8)
 
-        Label(self.frame, text="Threshold STD:").grid(
+        Label(self.frame, text="Derivative Span:").grid(
             row=8, column=0, sticky="w", pady=12, padx=8
         )
-        Entry(self.frame, textvariable=self.threshstd).grid(
+        Entry(self.frame, textvariable=self.spanderivative).grid(
             row=8, column=1, pady=12, padx=8
         )
 
-        Label(self.frame, text="Threshold PCT:").grid(
+        Label(self.frame, text="Threshold STD:").grid(
             row=9, column=0, sticky="w", pady=12, padx=8
         )
-        Entry(self.frame, textvariable=self.newthresh).grid(
+        Entry(self.frame, textvariable=self.threshstd).grid(
             row=9, column=1, pady=12, padx=8
         )
 
-        Label(self.frame, text="Injection time in seconds:").grid(
+        Label(self.frame, text="Threshold PCT:").grid(
             row=10, column=0, sticky="w", pady=12, padx=8
         )
-        Entry(self.frame, textvariable=self.injs).grid(
+        Entry(self.frame, textvariable=self.newthresh).grid(
             row=10, column=1, pady=12, padx=8
         )
 
-        # Remove duration_text and its Entry (since it was based on skip)
-        # self.duration_text = StringVar(value="Duration analysis: 15m 3s")
-        # Entry(
-        #     self.frame,
-        #     textvariable=self.duration_text,
-        #     state="readonly",
-        #     width=28,
-        #     fg="blue",
-        # ).grid(row=2, column=4, padx=8, pady=12)
-
-        # Remove traces for skip and duration
-        self.total_frames.trace_add("write", lambda *args: self.update_gg_time())
-        self.total_frames.trace_add("write", lambda *args: self.update_ff_time())
-        # self.skip.trace_add("write", lambda *args: self.update_duration())
-
-        # Trace changes to update GG and FF time automatically
-        self.gg.trace_add("write", lambda *args: self.update_gg_time())
-        self.ff.trace_add("write", lambda *args: self.update_ff_time())
+        Label(self.frame, text="Injection time in seconds:", ).grid(
+            row=11, column=0, sticky="w", pady=12, padx=8
+        )
+        Entry(self.frame, textvariable=self.injs).grid(
+            row=11, column=1, pady=12, padx=8
+        )
 
         Button(self.frame, text="Run Processing", command=self.run_processing).grid(
-            row=11, columnspan=3, pady=24
+            row=12, columnspan=3, pady=24
         )
+
+        # --- Save Normalised Plots Box ---
+        self.save_box = Frame(self.frame, relief="groove", borderwidth=2, width=260, height=120)
+        self.save_box.grid(row=7, column=2, rowspan=5, sticky="n", padx=(18,0), pady=8)
+
+        Label(self.save_box, text="Save Normalised Plots", font=("Arial", 10, "bold")).pack(anchor="w", padx=8, pady=(8,4))
+
+        self.save_raw_images = IntVar(value=0)  # Default unticked
+        Checkbutton(self.save_box, text="Save raw images", variable=self.save_raw_images).pack(anchor="w", padx=8, pady=(0,6))
+
+        Label(self.save_box, text="Skip time steps (s):").pack(anchor="w", padx=8)
+        self.skip_time_steps = StringVar(value="10")
+        Entry(self.save_box, textvariable=self.skip_time_steps, width=10).pack(anchor="w", padx=8)
 
     def browse_videos(self):
         folder_selected = filedialog.askdirectory()
@@ -170,8 +177,11 @@ class VideoProcessingApp:
 
     def run_processing(self):
         try:
+            #print(self.skip_time_steps.get(), self.use_same_mask.get(), self.save_raw_images.get())  # Debug print to check skip_time_steps value
             pm.main_processor(
                 self.raw_videos_path.get(),
+                self.mixing_option.get(),
+                self.save_raw_images.get(),
                 self.use_same_mask.get(),
                 int(self.total_frames.get()),
                 int(self.channel.get()),
@@ -182,6 +192,7 @@ class VideoProcessingApp:
                 int(self.injs.get()),
                 int(self.gg.get()),
                 int(self.ff.get()),
+                int(self.skip_time_steps.get()),  # Use skip_time_steps from the entry
                 # int(self.skip.get()),  # Removed skip argument
             )
             messagebox.showinfo("Success", "Video processing completed successfully.")

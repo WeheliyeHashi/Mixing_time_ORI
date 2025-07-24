@@ -5,7 +5,7 @@
 import numpy as np
 from scipy.ndimage import gaussian_filter
 import matplotlib.pyplot as plt
-
+import cv2
 from scipy.signal import savgol_filter
 #from Reader.readVideomp4 import readVideomp4
 import process_mixingtime as pm
@@ -29,21 +29,29 @@ def fit_circle_least_squares(pts):
     radius = np.sqrt(c[2] + center_x**2 + center_y**2)
     return center_x, center_y, radius
 
-def _return_masked_image(image, pts):
+def _return_masked_image(image, pts, operating_system='rock', scale=2.9):
     center_x, center_y, radius = fit_circle_least_squares(pts)
     x = np.arange(0, image.shape[1])
     y = np.arange(0, image.shape[0])
     X, Y = np.meshgrid(x, y)
-    mask = (X - center_x)**2 + (Y - center_y)**2 <= radius**2  # inside is True
+    if operating_system == 'compression':
+        # 1 in the ring between large and small circle, 0 elsewhere
+        mask_large = (X - center_x)**2 + (Y - center_y)**2 <= radius**2
+        mask_small = (X - center_x)**2 + (Y - center_y)**2 < (radius/scale)**2
+        mask = mask_large & (~mask_small)
+       
+    else:  # 'rock'
+        # 1 inside large circle, 0 outside
+        mask = (X - center_x)**2 + (Y - center_y)**2 <= radius**2
     return mask.astype(np.uint8)  # 1 inside, 0 outside
 
 def selectVideoReader(params_input: str):
     video_file = params_input
     # open video to read
     
-
-    isMP4video = video_file.endswith(".mp4")
-    isAVIvideo = video_file.endswith(".avi")
+    
+    isMP4video = video_file.lower().endswith(".mp4")
+    isAVIvideo = video_file.lower().endswith(".avi")
 
     if isMP4video or isAVIvideo:
         # use opencv VideoCapture
@@ -78,6 +86,9 @@ def average_frames(store, indices, channel, mask, filter_sigma):
 
 def analyze_mixing_time(
     video_path,
+    operating_system='rock',
+    save_plots=False,
+    Figures_path=None,
     mask_path=None,
     totalframes2analyze=271,
     channel=1,
@@ -88,7 +99,7 @@ def analyze_mixing_time(
     injs=10,
     GG=30,
     FF=900,
-
+    skip=100,
     Filter=2,
     consecutivePoints=5,
     fromend=1,
@@ -125,7 +136,13 @@ def analyze_mixing_time(
         pts = plt.ginput(n=-1, timeout=0)
         plt.close()
         np.save(mask_path, pts)
-    mask = _return_masked_image(frame, pts)
+   # mask = _return_masked_image(frame, pts)
+    mask = _return_masked_image(frame, pts, operating_system=operating_system, scale=2.8)
+    if operating_system == 'compression':
+        pts_np = np.array(pts, dtype=np.int32)
+        pts_np = pts_np.reshape((-1, 1, 2))
+        cv2.fillPoly(mask, [pts_np], 0)
+    mask = np.flipud(mask)
 
     fps = np.ceil(store.fps)
     totalframes = int(store.tot_frames)
@@ -137,7 +154,7 @@ def analyze_mixing_time(
     indicesf = indicesfx[::10]
     M1 = average_frames(store, indicesf, channel, mask, Filter)
 
-    totalpx = np.sum(~np.isnan(M0))
+    # totalpx = np.sum(~np.isnan(M0))
     AA = round(totalframes / totalframes2analyze)
     times = [(i * AA) / fps for i in range(int(totalframes / AA) - 1)]
     #times = [(i*skip) / fps for i in range(totalframes2analyze)]
@@ -157,6 +174,16 @@ def analyze_mixing_time(
         G[~np.isfinite(G)] = np.nan
         zGmean.append(np.nanmean(G))
         zSTDM.append(np.nanstd(M))
+        if save_plots and t% skip == 0:
+            plt.figure(figsize=(8, 5))
+            plt.imshow(G, cmap='jet', vmin=0, vmax=1)
+            plt.title(f"Frame at {t:.2f} seconds")
+            cbar = plt.colorbar(label='G value')
+            #cbar.set_clim(0, 1)  # Set colorbar limits from 0 to 1
+            cbar.mappable.set_clim(0, 1)  # Correct way to set colorbar limits           
+            plt.axis('off')
+            plt.savefig(Figures_path / f"frame_{int(t)}.png")
+            plt.close()
     store.release()
 
     smoothSTD = savgol_filter(zSTDM, span, 3, mode='interp')
@@ -177,7 +204,7 @@ def analyze_mixing_time(
     tm = times[fml] - injs if not empty else np.nan
     tmpct = times[fmlpct] - injs if not empty1 else np.nan
 
-    return smoothSTD, smooth_zGmean, tm, tmpct, np.array(times) - injs
+    return zSTDM, zGmean, smoothSTD, smooth_zGmean, tm, tmpct, np.array(times) - injs
 
 
    
@@ -193,13 +220,15 @@ def _plot_results(results_path, records, newthresh=0.95):
     plt.ylabel('std(G)')
     for record in records:
         #video_name = record['video']
+        zSTDM = record['zSTDM']
         smoothSTD = record['smoothSTD']
         tm = record['tm']
         times = record['time']
         [line]=plt.plot(times, smoothSTD, linewidth=1)
         color = line.get_color() 
+        plt.plot(times, zSTDM, linewidth=1, alpha=0.4, color=color)
         if not (tm is None or np.isnan(tm)):
-            plt.axvline(tm, linestyle='--', linewidth=1, color=color)
+            plt.axvline(tm, linestyle='--', linewidth=2, color=color)
         tm_list.append(tm)
     tmc_mean, tmc_std  = np.nanmean(tm_list), np.nanstd(tm_list)
     plt.legend(loc='upper right', fontsize=14, title=f'Mean $t_m$ = {tmc_mean:.1f}s,\n STD = {tmc_std:.1f}s')
@@ -217,15 +246,17 @@ def _plot_results(results_path, records, newthresh=0.95):
     plt.ylabel('PCT [-]')
     for record in records:
        # video_name = record['video']
+        z_Gmean = record['zGmean']
         smooth_zGmean = record['smooth_zGmean']
         tmpct = record['tmpct']
         times = record['time']
         [line] = plt.plot(times, smooth_zGmean, linewidth=1)
         color = line.get_color()
+        plt.plot(times, z_Gmean, linewidth=1, alpha=0.4, color=color)
         if not (tmpct is None or np.isnan(tmpct)):
-            plt.axvline(tmpct, linestyle='--', linewidth=1, color=color)
+            plt.axvline(tmpct, linestyle='--', linewidth=2, color=color)
         tmpct_list.append(tmpct)
-    plt.axhline(newthresh, linestyle='--', color='k', linewidth=1, label=f'threshold = {newthresh:.2f}')
+    plt.axhline(newthresh, linestyle='--', color='k', linewidth=2, label=f'threshold = {newthresh:.2f}')
     tmpct_mean, tmpct_std = np.nanmean(tmpct_list), np.nanstd(tmpct_list)
     plt.legend(loc='lower right', fontsize=14, title=f'Mean $t_m$ = {tmpct_mean:.1f}s,\n STD = {tmpct_std:.1f}s')
     plt.ylim(0, 1.05)
@@ -239,12 +270,15 @@ def _plot_results(results_path, records, newthresh=0.95):
     return tmc_mean, tmc_std, tmpct_mean, tmpct_std
 
 
-def main_processor(rawvideos_path, Use_same_mask=True, totalframes2analyze=271, channel=1, span=150, spanderivative=150, 
+def main_processor(rawvideos_path, operating_system = 'rock', save_plots=False, 
+                   Use_same_mask=True, totalframes2analyze=271, channel=1, span=150, spanderivative=150, 
                    threshstd=0.025, newthresh=0.95, injs=10, GG=30, FF=900, skip=100):
     """
     Main function to process videos and analyze mixing time.
     Parameters:
     - rawvideos_path: Path to the folder containing raw videos.
+    - operating_system: 'rock' or 'compression' to determine the type of analysis.
+    - save_plots: Boolean to save plots of the analysis.
     - Use_same_mask: Boolean to determine if the same mask should be used for all videos in a subfolder.
     - totalframes2analyze: Total frames to analyze per video.
     - channel: Channel to analyze (0 for red, 1 for green, 2 for blue).
@@ -270,7 +304,7 @@ def main_processor(rawvideos_path, Use_same_mask=True, totalframes2analyze=271, 
         f for f in rawvideos_path.rglob('*') 
         if f.is_dir() and not any(child.is_dir() for child in f.iterdir())
     ]
-    valid_extensions = ['.mp4', '.avi']
+    valid_extensions = ['.mp4', '.avi','.MP4', '.AVI']
     local_records, global_records = [], []
 
 
@@ -301,7 +335,15 @@ def main_processor(rawvideos_path, Use_same_mask=True, totalframes2analyze=271, 
                     current_mask = mask_file
                 else:
                     current_mask = mask_path / (video_file.stem + "_mask.npy")
+                if save_plots:
+                    Figures_path = results_path / 'Figures' /f'{video_file.stem}'
+                    Figures_path.mkdir(exist_ok=True, parents=True)
+                else:
+                    Figures_path = None
                 results = analyze_mixing_time(str(video_file).replace('\\', '/'), 
+                                                operating_system,
+                                                save_plots,
+                                                Figures_path,
                                                 current_mask,
                                                 totalframes2analyze,
                                                 channel,
@@ -312,12 +354,15 @@ def main_processor(rawvideos_path, Use_same_mask=True, totalframes2analyze=271, 
                                                 injs,
                                                 GG,
                                                 FF,
+                                                skip
                                          
                                                 )
-                smoothSTD, smooth_zGmean, tm, tmpct, time = results
+                zSTDM, zGmean,smoothSTD, smooth_zGmean, tm, tmpct, time = results
                 local_records.append({
                     'video': video_file.name,
                     'tm': tm,
+                    'zSTDM': zSTDM,
+                    'zGmean': zGmean,
                     'tmpct': tmpct,
                     'smoothSTD': smoothSTD,
                     'smooth_zGmean': smooth_zGmean,
@@ -343,9 +388,14 @@ def main_processor(rawvideos_path, Use_same_mask=True, totalframes2analyze=271, 
             # Save global results after each subfolder for robustness
             df_global = pd.DataFrame.from_records(global_records)
             df_global.to_csv(results_path_global / 'global_mixing_time_results.csv', index=False)
+
+
+#%%
 def main():
     parser = argparse.ArgumentParser(description="Process videos and analyze mixing time.")
     parser.add_argument('--rawvideos_path', type=str, required=True, help='Path to  the folder containing raw videos.')
+    parser.add_argument('--operating_system', type=str, default='rock', choices=['rock', 'compression'], help='Operating system type for analysis.')
+    parser.add_argument('--save_plots', action='store_true', help='Save plots of the analysis.')
     parser.add_argument('--Use_same_mask', action='store_true', help='Use the same mask for all videos in a subfolder.')
     parser.add_argument('--totalframes2analyze', type=int, default=271, help='Total frames to analyze per video.')
     parser.add_argument('--channel', type=int, default=1, help='Channel to analyze (0 for red, 1 for green, 2 for blue).')
@@ -356,10 +406,11 @@ def main():
     parser.add_argument('--injs', type=int, default=10, help='Seconds between injection and agitation.') 
     parser.add_argument('--GG', type=int, default=30, help='Number of frames to average at the beginning.')
     parser.add_argument('--FF', type=int, default=900, help='Number of frames to average at the end.')
+    parser.add_argument('--skip', type=int, default=100, help='Number of frames to skip between each analyzed frame.')
        
     args = parser.parse_args()
     
-    main_processor(args.rawvideos_path,args.Use_same_mask, args.totalframes2analyze, args.channel,
+    main_processor(args.rawvideos_path,args.operating_system, args.save_plots ,args.Use_same_mask, args.totalframes2analyze, args.channel,
                    args.span, args.spanderivative, args.threshstd, args.newthresh, args.injs, args.GG, args.FF, args.skip)
 if __name__ == "__main__":
     main()
